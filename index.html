@@ -25,6 +25,7 @@ border-radius:6px;box-shadow:0 10px 30px #0006;padding:44px 22px 20px 56px;overf
 .line{font-family:'Caveat','Segoe Script','Bradley Hand',cursive;font-size:30px;line-height:44px;color:var(--ink);min-height:44px;overflow-wrap:anywhere}
 .line b{color:var(--ink2);font-weight:700}
 .line.title{text-align:center;margin-left:-34px;font-size:36px;font-weight:700;text-decoration:underline wavy var(--ink2) 1px;text-underline-offset:6px}
+.erase::after{content:"";display:inline-block;width:14px;height:26px;background:#e7a1a1;border-radius:3px;margin-left:2px;vertical-align:-4px}
 .pen::after{content:"✎";margin-left:2px;color:var(--ink2);font-size:22px}
 #start{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-family:'Caveat',cursive;font-size:30px;font-weight:700;padding:16px 28px;border:0;border-radius:14px;background:var(--btn);color:var(--btn-t);box-shadow:0 5px 0 #4a2a17,0 10px 16px #0005;cursor:pointer}
 #start:active{transform:translate(-50%,-48%)}
@@ -97,11 +98,11 @@ const sig=s=>s.alone||[s.m.n,s.soup,s.yanci,s.meze].join("|");
 function fresh(){let s,i=0;do{s=newState()}while(S&&sig(s)===sig(S)&&++i<20);return s}
 
 function lines(s){
-  const L=[{t:"Bugünün Menüsü",title:true}];
-  if(s.alone){L.push({t:s.alone});return L}
-  L.push({t:soupTxt(s.soup)},{t:s.m.n});
-  if(s.yanci)L.push({t:s.yanci});
-  if(s.meze)L.push({t:s.meze});
+  const L=[{k:"title",t:"Bugünün Menüsü"}];
+  if(s.alone){L.push({k:"alone",t:s.alone});return L}
+  L.push({k:"soup",t:soupTxt(s.soup)},{k:"main",t:s.m.n});
+  if(s.yanci)L.push({k:"yanci",t:s.yanci});
+  if(s.meze)L.push({k:"meze",t:s.meze});
   return L;
 }
 function parts(s){
@@ -129,17 +130,34 @@ function change(s,sel){
 }
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const $=id=>document.getElementById(id);
-async function write(L,prev){
-  const id=++run,box=$("lines");box.innerHTML="";
+async function write(L,prev,force){
+  const id=++run,box=$("lines");
   ["actions","thanks"].forEach(x=>$(x).classList.add("hide"));
-  for(let i=0;i<L.length;i++){
-    const it=L[i],d=document.createElement("div");
-    d.className="line"+(it.title?" title":"");box.appendChild(d);
-    if(prev&&prev[i]&&prev[i].t===it.t){d.textContent=it.t;continue}
-    d.classList.add("pen");
-    const tn=document.createTextNode("");d.appendChild(tn);
-    for(const ch of it.t){if(id!==run)return;tn.textContent+=ch;await sleep(it.title?70:55+Math.random()*50)}
-    d.classList.remove("pen");await sleep(250);
+  if(!prev)box.innerHTML="";
+  const find=k=>box.querySelector('[data-k="'+k+'"]');
+  // 1) Değişen veya kalkan satırları silgiyle sil
+  for(const el of [...box.children]){
+    const k=el.dataset.k,it=L.find(x=>x.k===k);
+    if(it&&it.t===el.textContent&&!(force&&k!=="title"))continue;
+    el.classList.add("erase");
+    let t=el.textContent;
+    while(t.length){if(id!==run)return;t=t.slice(0,-1);el.textContent=t;await sleep(28)}
+    el.classList.remove("erase");
+    if(!it)el.remove();
+  }
+  // 2) Satırları sırasıyla yerleştir (yoksa boş satır aç)
+  for(const it of L){
+    let el=find(it.k);
+    if(!el){el=document.createElement("div");el.dataset.k=it.k;el.className="line"+(it.k==="title"?" title":"")}
+    box.appendChild(el);
+  }
+  // 3) Yeni yazıları el yazısıyla yaz
+  for(const it of L){
+    const el=find(it.k);
+    if(el.textContent===it.t)continue;
+    el.classList.add("pen");
+    for(const ch of it.t){if(id!==run)return;el.textContent+=ch;await sleep(it.title?70:55+Math.random()*50)}
+    el.classList.remove("pen");await sleep(250);
   }
   if(id===run)$("actions").classList.remove("hide");
 }
@@ -156,7 +174,7 @@ $("start").onclick=()=>{$("start").classList.add("hide");S=fresh();write(lines(S
 $("like").onclick=()=>{$("actions").classList.add("hide");$("thanks").classList.remove("hide")};
 $("dislike").onclick=openPop;
 $("nope").onclick=()=>$("modal").classList.add("hide");
-$("all").onclick=()=>{$("modal").classList.add("hide");S=fresh();write(lines(S))};
+$("all").onclick=()=>{$("modal").classList.add("hide");const prev=lines(S);S=fresh();write(lines(S),prev,true)};
 $("yes").onclick=()=>{
   if(!sel.size)return;
   $("modal").classList.add("hide");
