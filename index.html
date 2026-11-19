@@ -117,7 +117,7 @@ function change(s,sel){
   const n={...s};
   if(sel.has("main")){
     const m=pick(mains.filter(x=>x.n!==s.m.n&&!(x.n==="Yeşil mercimek"&&n.soup==="Mercimek")));
-    n.m=m;n.yanci=side(m);
+    n.m=m;n.yanci=(m.y===null&&s.m.y===null&&s.yanci)?s.yanci:side(m);
     if(m.solo)n.meze=null;else if(!n.meze)n.meze=mezeFor(n.soup);
   }
   if(sel.has("meze")&&s.meze&&n.meze)n.meze=n.meze==="Salata"?"Cacık":"Salata";
