@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<meta name="theme-color" content="#5b3a29">
+<title>Bugün ne yiyelim?</title>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#5b3a29;--bg2:#3e2518;--paper:#fbf4d9;--line:#d9c98f;--ink:#25376b;--ink2:#7a2e2e;--btn:#7b4a2d;--btn-t:#fff6e0;--foot:#d9bfa3;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#43291b;--bg2:#2a170e;--paper:#f3ebcc;--foot:#c9ae92}}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:radial-gradient(circle at 50% 0,var(--bg),var(--bg2));min-height:100vh;display:flex;flex-direction:column;align-items:center;font-family:Georgia,serif}
+h1{font-family:'Caveat',cursive,sans-serif;color:var(--btn-t);font-size:34px;margin:18px 0 10px;font-weight:700;text-align:center}
+.logo{width:64px;height:64px;margin-top:16px}
+.paper{position:relative;width:min(92vw,460px);min-height:62vh;background-color:var(--paper);
+background-image:repeating-linear-gradient(to bottom,transparent 0 43px,var(--line) 43px 44px);
+border-radius:6px;box-shadow:0 10px 30px #0006;padding:44px 22px 20px 56px;overflow:hidden}
+.paper::before{content:"";position:absolute;left:42px;top:0;bottom:0;width:2px;background:#d98b8b99}
+.line{font-family:'Caveat','Segoe Script','Bradley Hand',cursive;font-size:30px;line-height:44px;color:var(--ink);min-height:44px;overflow-wrap:anywhere}
+.line b{color:var(--ink2);font-weight:700}
+.line.title{font-size:36px;font-weight:700;text-decoration:underline wavy var(--ink2) 1px;text-underline-offset:6px}
+.pen::after{content:"✎";margin-left:2px;color:var(--ink2);font-size:22px}
+#start{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-family:'Caveat',cursive;font-size:30px;font-weight:700;padding:16px 28px;border:0;border-radius:14px;background:var(--btn);color:var(--btn-t);box-shadow:0 5px 0 #4a2a17,0 10px 16px #0005;cursor:pointer}
+#start:active{transform:translate(-50%,-48%)}
+.actions{display:flex;gap:12px;margin:18px 0;min-height:52px}
+.actions button,.modal button{font-family:'Caveat',cursive;font-size:26px;font-weight:700;padding:8px 22px;border:0;border-radius:12px;cursor:pointer;background:var(--btn);color:var(--btn-t);box-shadow:0 4px 0 #4a2a17}
+.actions button.no,.modal button.no{background:#a8927f;box-shadow:0 4px 0 #75604e}
+.ok{font-family:'Caveat',cursive;font-size:28px;color:var(--btn-t);align-self:center}
+.hide{display:none!important}
+.overlay{position:fixed;inset:0;background:#000a;display:flex;align-items:center;justify-content:center;z-index:5;padding:20px}
+.modal{background:var(--paper);border-radius:14px;padding:24px;max-width:340px;text-align:center;box-shadow:0 10px 30px #000a}
+.modal p{font-family:'Caveat',cursive;font-size:30px;color:var(--ink);margin:0 0 18px;line-height:1.1}
+.modal div{display:flex;gap:12px;justify-content:center}
+footer{margin-top:auto;padding:14px 12px 16px;font-size:11px;color:var(--foot);text-align:center;opacity:.85}
+</style>
+</head>
+<body>
+<img class="logo" alt="" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='110' fill='%235b3a29'/%3E%3Ccircle cx='256' cy='256' r='110' fill='%23fbf4d9'/%3E%3Ccircle cx='256' cy='256' r='78' fill='none' stroke='%235b3a29' stroke-width='10'/%3E%3Cg stroke='%23fbf4d9' stroke-linecap='round' fill='none'%3E%3Cpath d='M90 140V200M110 140V200M130 140V200' stroke-width='10'/%3E%3Cpath d='M90 200Q90 235 110 235Q130 235 130 200M110 235V375' stroke-width='12'/%3E%3Cpath d='M402 215V375' stroke-width='14'/%3E%3C/g%3E%3Cellipse cx='402' cy='180' rx='24' ry='38' fill='%23fbf4d9'/%3E%3C/svg%3E">
+<h1>Bugün ne yiyelim?</h1>
+<div class="paper" id="paper">
+  <button id="start">Bugün ne yiyelim?</button>
+  <div id="lines"></div>
+</div>
+<div class="actions hide" id="actions">
+  <button id="like">Beğendim 👍</button>
+  <button id="dislike" class="no">Beğenmedim 👎</button>
+</div>
+<div class="actions hide" id="thanks"><span class="ok">Afiyet olsun! 🍽️</span></div>
+
+<div class="overlay hide" id="modal">
+  <div class="modal">
+    <p>Yeni menü oluşturmak istiyor musunuz?</p>
+    <div><button id="yes">Evet</button><button id="nope" class="no">Hayır</button></div>
+  </div>
+</div>
+
+<footer>Tüm Hakları Emir Kaan Albayrak Tarafından Saklıdır.</footer>
+
+<script>
+const soups=["Mercimek","Brokoli","Tel şehriye","Yoğurtlu çorba","Tarhana"];
+const alone=["Hamburger ve patates kızartması","Eli böğründe","KFC Tavuk, patates kızartması ve coleslaw"];
+// y: yancı  -> "Pilav" gibi sabit, null = rastgele, 0 = yancısız
+const mains=[
+ {n:"Kuru fasulye",y:"Pilav"},{n:"Nohut",y:"Pilav"},{n:"Kıymalı patates graten",y:null},
+ {n:"Tavada soslu tavuk",y:"Makarna"},{n:"Ispanak",y:null},{n:"İzmir köfte",y:"Pilav"},
+ {n:"Dolma",y:null},{n:"Taze fasulye",y:null},{n:"Püreli köfte",y:null},{n:"Alinazik",y:null},
+ {n:"İskender",y:0,solo:true},{n:"Hünkar beğendi",y:null},{n:"Yeşil mercimek",y:null},{n:"Et kavurma",y:"Pilav"}
+];
+const sides=["Pilav","Bulgur pilavı","Makarna","Erişte"];
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+let last="",run=0;
+
+function makeMenu(){
+  const L=[{l:"Bugünün Menüsü",t:"",title:true}];
+  if(Math.random()<0.2){
+    L.push({l:"Bugün",t:pick(alone)});return L;
+  }
+  const m=pick(mains);
+  const soup=pick(soups.filter(s=>!(m.n==="Yeşil mercimek"&&s==="Mercimek")));
+  L.push({l:"Çorba",t:soup});
+  L.push({l:"Ana yemek",t:m.n});
+  if(m.y!==0){
+    let s=m.y||pick(sides);
+    if(s==="Makarna"&&Math.random()<0.5)s="Soslu makarna";
+    L.push({l:"Yancı",t:s});
+  }
+  if(!m.solo){
+    const meze=(soup==="Yoğurtlu çorba")?"Salata":(Math.random()<0.6?"Salata":"Cacık");
+    L.push({l:"Meze",t:meze});
+  }
+  return L;
+}
+function newMenu(){
+  let m,sig,i=0;
+  do{m=makeMenu();sig=JSON.stringify(m);i++}while(sig===last&&i<15);
+  last=sig;return m;
+}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function write(menu){
+  const id=++run, box=document.getElementById("lines");
+  box.innerHTML="";
+  ["actions","thanks"].forEach(x=>document.getElementById(x).classList.add("hide"));
+  for(const it of menu){
+    const d=document.createElement("div");d.className="line"+(it.title?" title":"");
+    box.appendChild(d);d.classList.add("pen");
+    const label=it.title?it.l:"";
+    const b=document.createElement("b");
+    const txt=document.createTextNode("");
+    if(it.title){d.appendChild(txt)}else{d.appendChild(b);d.appendChild(txt)}
+    const target=it.title?b:b;
+    for(const ch of label){ if(id!==run)return; (it.title?txt:b).textContent+=ch; await sleep(it.title?70:55); }
+    for(const ch of it.t){ if(id!==run)return; txt.textContent+=ch; await sleep(55+Math.random()*50); }
+    d.classList.remove("pen");
+    await sleep(250);
+  }
+  if(id===run)document.getElementById("actions").classList.remove("hide");
+}
+document.getElementById("start").onclick=()=>{
+  document.getElementById("start").classList.add("hide");
+  write(newMenu());
+};
+document.getElementById("like").onclick=()=>{
+  document.getElementById("actions").classList.add("hide");
+  document.getElementById("thanks").classList.remove("hide");
+};
+document.getElementById("dislike").onclick=()=>document.getElementById("modal").classList.remove("hide");
+document.getElementById("nope").onclick=()=>document.getElementById("modal").classList.add("hide");
+document.getElementById("yes").onclick=()=>{
+  document.getElementById("modal").classList.add("hide");
+  write(newMenu());
+};
+</script>
+</body>
+</html>
