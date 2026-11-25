@@ -71,31 +71,170 @@ footer{margin-top:auto;padding:14px 12px 16px;font-size:11px;color:var(--foot);t
 <footer>Tüm Hakları Emir Kaan Albayrak Tarafından Saklıdır.</footer>
 
 <script>
-const soups=["Mercimek","Brokoli","Tel şehriye","Yoğurtlu çorba","Tarhana"];
-const alone=["Hamburger ve patates kızartması","Eli böğründe","KFC Tavuk, patates kızartması ve coleslaw"];
-// y: sabit yancı | null = rastgele yancı | 0 = yancısız
-const mains=[
- {n:"Kuru fasulye",y:"Pilav"},{n:"Nohut",y:"Pilav"},{n:"Kıymalı patates graten",y:null},
- {n:"Tavada soslu tavuk",y:"Makarna"},{n:"Ispanak",y:null},{n:"İzmir köfte",y:"Pilav"},
- {n:"Dolma",y:null},{n:"Taze fasulye",y:null},{n:"Püreli köfte",y:null},{n:"Alinazik",y:null},
- {n:"İskender",y:0,solo:true},{n:"Hünkar beğendi",y:null},{n:"Yeşil mercimek",y:null},{n:"Et kavurma",y:"Pilav"}
-];
-const sides=["Pilav","Bulgur pilavı","Makarna","Erişte"];
-const YC="Yoğurtlu çorba";
+/* ================= MERKEZİ YEMEK VERİSİ =================
+   Yeni yemek / eşleşme eklemek için sadece bu bölümü düzenleyin.
+   mains satırı: [ad, kategori, yan yemek, {seçenekler}]
+     yan yemek: ""        -> yan yemek yok
+                "A"       -> ZORUNLU tek yan yemek (alternatif seçilmez)
+                "A|B"     -> alternatiflerden rastgele biri (menüde değiştirilebilir)
+     seçenekler: like   -> çorba/meze kurallarını başka bir yemekten ödünç al
+                 contains -> yemeğin içinde bulunan gruplar (çakışma kontrolü)
+                 solo   -> meze/salata yok (tek başına yenen yemek)
+   Çorba / meze önceliği: yemeğe özel kural > like > kategori varsayılanı */
+const MENU_DATA={
+ aloneChance:0.2,
+ alone:["Hamburger ve patates kızartması","Eli böğründe","KFC Tavuk, patates kızartması ve coleslaw"],
+ mains:[
+  ["Kuru Fasulye","baklagil","Pirinç Pilavı"],["Nohut Yemeği","baklagil","Pirinç Pilavı"],
+  ["Etli Nohut","et","Pirinç Pilavı",{like:"Nohut Yemeği"}],["Tas Kebabı","et","Pirinç Pilavı"],
+  ["Orman Kebabı","et","Pirinç Pilavı",{like:"Tas Kebabı"}],["İzmir Köfte","et","Patates",{like:"Köfte"}],
+  ["Hasanpaşa Köfte","et","Patates Püresi",{like:"Köfte"}],["Kadınbudu Köfte","et","Pirinç Pilavı",{like:"Köfte"}],
+  ["Sulu Köfte","et","Pirinç Pilavı",{like:"Köfte"}],["Karnıyarık","et","Pirinç Pilavı"],
+  ["Etli Bezelye","et","Pirinç Pilavı"],["Etli Türlü","et","Pirinç Pilavı"],
+  ["Hünkar Beğendi","et","Beğendi"],["Ali Nazik Kebabı","et","Yoğurtlu Patlıcan"],
+  ["Çökertme Kebabı","et","Kibrit Patates"],["Tavuk Sote","tavuk","Pirinç Pilavı"],
+  ["Tavuk Haşlama","tavuk","Patates",{like:"Tavuk Sote"}],["Tavuk Kapama","tavuk","Pirinç Pilavı",{like:"Tavuk Sote"}],
+  ["Tavuk Şinitzel","tavuk","Patates Kızartması"],["Tavuk Fajita","tavuk","Lavaş"],
+  ["Mantı","hamur","Sarımsaklı Yoğurt",{contains:["makarna"]}],
+  ["Hamsili Pilav","balik","",{contains:["pilav"]}],["Balık Buğulama","balik","Pirinç Pilavı"],
+  ["Ispanak Yemeği","sebze","Yoğurt"],["Pırasa Yemeği","sebze",""],
+  ["Zeytinyağlı Taze Fasulye","sebze","Pirinç Pilavı"],["Bamya Yemeği","sebze","Pirinç Pilavı"],
+  ["Patates Oturtma","sebze","Pirinç Pilavı",{contains:["patates"]}],["Patlıcan Musakka","sebze","Pirinç Pilavı"],
+  ["Etli Yaprak Sarma","et","Yoğurt",{contains:["pilav"]}],
+  ["Lahana Sarması","et","Yoğurt",{contains:["pilav"],like:"Etli Yaprak Sarma"}],
+  ["Fırında Levrek","balik","Roka Salatası"],["Fırında Çipura","balik","Roka Salatası"],
+  ["Hamsi Tava","balik","Mısır Ekmeği"],["Somon Izgara","balik","Sebze Garnitürü"],
+  ["Et Sote","et","Pirinç Pilavı|Bulgur Pilavı"],["Sac Kavurma","et","Bulgur Pilavı|Pirinç Pilavı",{like:"Et Sote"}],
+  ["Dana Haşlama","et","Patates Püresi|Pirinç Pilavı"],["Kuzu Tandır","et","İç Pilav|Bulgur Pilavı"],
+  ["Kuzu İncik","et","Patates Püresi|İç Pilav",{like:"Kuzu Tandır"}],["Köfte","et","Pirinç Pilavı|Patates Kızartması"],
+  ["Tavuk Fırın","tavuk","Pirinç Pilavı|Bulgur Pilavı",{like:"Tavuk Sote"}],
+  ["Tavuk But","tavuk","Patates Püresi|Pirinç Pilavı",{like:"Tavuk Sote"}],
+  ["Tavuk Kanat","tavuk","Patates Kızartması|Bulgur Pilavı",{like:"Tavuk Sote"}],
+  ["Tavuklu Mantar Sote","tavuk","Pirinç Pilavı|Makarna",{like:"Tavuk Sote"}],
+  ["Patlıcan Oturtma","sebze","Pirinç Pilavı|Bulgur Pilavı",{like:"Karnıyarık"}],
+  ["Kabak Yemeği","sebze","Pirinç Pilavı|Bulgur Pilavı"],["Karnabahar Yemeği","sebze","Yoğurt|Pirinç Pilavı"],
+  ["Türlü","sebze","Pirinç Pilavı|Bulgur Pilavı"],
+  ["Yeşil Mercimek Yemeği","baklagil","Bulgur Pilavı|Pirinç Pilavı",{contains:["mercimek"]}],
+  ["Barbunya","baklagil","Pirinç Pilavı|Makarna"],["Fırında Sebze","sebze","Yoğurt|Bulgur Pilavı"],
+  ["Mücver","sebze","Yoğurt|Patates Salatası"],["Falafel","baklagil","Humus|Lavaş"],
+  ["Lazanya","hamur","Mevsim Salata|Sarımsaklı Ekmek",{contains:["makarna"]}],
+  ["Su Böreği","hamur","Çay|Domates-Salatalık"],["Fırında Makarna","hamur","Mevsim Salata",{contains:["makarna"]}],
+  ["Balık Izgara","balik","Roka Salatası|Patates"],["Sardalya Tava","balik","Roka Salatası|Mısır Ekmeği"],
+  /* uygulamada önceden bulunan, tablolarda olmayan yemekler */
+  ["İskender","et","",{solo:true}],
+  ["Kıymalı Patates Graten","et","Pirinç Pilavı|Bulgur Pilavı|Makarna",{contains:["patates"]}],
+  ["Tavada Soslu Tavuk","tavuk","Makarna|Soslu Makarna",{like:"Tavuk Sote"}],
+  ["Dolma","et","Yoğurt",{contains:["pilav"],like:"Etli Yaprak Sarma"}],
+  ["Püreli Köfte","et","Pirinç Pilavı|Bulgur Pilavı",{contains:["patates"],like:"Köfte"}]
+ ],
+ soupRules:{
+  "Kuru Fasulye":["Mercimek Çorbası","Ezogelin Çorbası","Domates Çorbası"],
+  "Nohut Yemeği":["Yayla Çorbası","Mercimek Çorbası","Şehriye Çorbası"],
+  "Et Sote":["Ezogelin Çorbası","Mercimek Çorbası","Sebze Çorbası"],
+  "Tas Kebabı":["Düğün Çorbası","Mercimek Çorbası","Yayla Çorbası"],
+  "Karnıyarık":["Ezogelin Çorbası","Mercimek Çorbası","Domates Çorbası"],
+  "Köfte":["Yayla Çorbası","Domates Çorbası","Şehriye Çorbası"],
+  "Tavuk Sote":["Tavuk Suyu Çorbası","Şehriye Çorbası","Sebze Çorbası"],
+  "Tavuk Şinitzel":["Domates Çorbası","Mantar Çorbası","Sebze Çorbası"],
+  "Ispanak Yemeği":["Mercimek Çorbası","Tarhana Çorbası","Yayla Çorbası"],
+  "Zeytinyağlı Taze Fasulye":["Tarhana Çorbası","Mercimek Çorbası","Domates Çorbası"],
+  "Mantı":["Mercimek Çorbası","Ezogelin Çorbası","Domates Çorbası"],
+  "Etli Yaprak Sarma":["Yayla Çorbası","Düğün Çorbası","Mercimek Çorbası","Ezogelin Çorbası","Domates Çorbası"],
+  "Patlıcan Musakka":["Ezogelin Çorbası","Mercimek Çorbası","Domates Çorbası"]
+ },
+ soupDefaults:{
+  et:["Mercimek Çorbası","Ezogelin Çorbası","Yayla Çorbası","Düğün Çorbası"],
+  tavuk:["Tavuk Suyu Çorbası","Şehriye Çorbası","Sebze Çorbası","Domates Çorbası","Brokoli Çorbası"],
+  balik:["Sebze Çorbası","Mantar Çorbası","Balık Çorbası","Brokoli Çorbası"],
+  baklagil:["Yayla Çorbası","Domates Çorbası","Şehriye Çorbası","Sebze Çorbası"],
+  sebze:["Mercimek Çorbası","Tarhana Çorbası","Yayla Çorbası","Domates Çorbası","Brokoli Çorbası"],
+  hamur:["Mercimek Çorbası","Ezogelin Çorbası","Domates Çorbası"]
+ },
+ mezeRules:{
+  "Kuru Fasulye":["Turşu","Soğan Salatası"],"Nohut Yemeği":["Çoban Salata","Turşu"],
+  "Et Sote":["Gavurdağı Salatası","Mevsim Salata"],"Tas Kebabı":["Cacık","Çoban Salata"],
+  "Köfte":["Piyaz","Mevsim Salata"],"Karnıyarık":["Cacık","Çoban Salata"],
+  "Tavuk Sote":["Mevsim Salata","Havuç Tarator"],"Tavuk Şinitzel":["Amerikan Salatası","Akdeniz Salata"],
+  "Ispanak Yemeği":["Cacık","Yoğurtlu Semizotu","Çoban Salata","Turşu"],
+  "Zeytinyağlı Taze Fasulye":["Cacık","Çoban Salata"],"Hamsi Tava":["Soğan Salatası","Turşu"],
+  "Mantı":["Acılı Ezme","Mevsim Salata"],"Etli Yaprak Sarma":["Haydari","Çoban Salata"],
+  "Lazanya":["Akdeniz Salata","Mevsim Salata"],"Kuzu Tandır":["Gavurdağı Salatası","Cacık"]
+ },
+ mezeDefaults:{
+  et:["Mevsim Salata","Çoban Salata","Cacık","Gavurdağı Salatası","Piyaz"],
+  tavuk:["Mevsim Salata","Havuç Tarator","Akdeniz Salata"],
+  balik:["Roka Salatası","Gavurdağı Salatası","Soğan Salatası"],
+  baklagil:["Turşu","Çoban Salata","Soğan Salatası"],
+  sebze:["Cacık","Çoban Salata","Mevsim Salata"],
+  hamur:["Acılı Ezme","Mevsim Salata","Akdeniz Salata","Çoban Salata"]
+ },
+ /* Aynı gruptan iki öğe aynı menüde bulunmaz (çorbalar dahil) */
+ groups:{
+  pilav:["Pirinç Pilavı","Bulgur Pilavı","İç Pilav"],
+  patates:["Patates","Patates Püresi","Patates Kızartması","Kibrit Patates","Patates Salatası"],
+  yogurt:["Yoğurt","Cacık","Yoğurtlu Semizotu","Haydari","Sarımsaklı Yoğurt","Yoğurtlu Patlıcan","Yayla Çorbası","Düğün Çorbası"],
+  makarna:["Makarna","Soslu Makarna","Şehriye Çorbası"],
+  mercimek:["Mercimek Çorbası","Ezogelin Çorbası"],
+  salata:["Mevsim Salata","Akdeniz Salata","Çoban Salata","Amerikan Salatası","Domates-Salatalık","Roka Salatası"]
+ },
+ mainCooldown:5,   /* ana yemek kaç gün tekrar etmesin */
+ softCooldown:2    /* çorba/yan/meze için tekrar penceresi (gün) */
+};
+
+/* ================= MENÜ MANTIĞI ================= */
+const D=MENU_DATA,alone=D.alone;
+const MAINS=D.mains.map(([n,c,s,o])=>({n,c,sides:s?s.split("|"):[],choice:s.includes("|"),...o}));
+const byName=Object.fromEntries(MAINS.map(m=>[m.n,m]));
+const grp={};for(const[g,l]of Object.entries(D.groups))l.forEach(i=>(grp[i]=grp[i]||[]).push(g));
+const keys=i=>[i,...(grp[i]||[])];
+const cand=(rules,defs,m)=>rules[m.n]||(m.like&&rules[m.like])||defs[m.c];
+const clash=(m,...items)=>{const c={};let t=0;
+  for(const k of [m.contains||[],...items.map(i=>i?keys(i):[])].flatMap(a=>[...new Set(a)])){if(c[k])t++;c[k]=1}
+  return t};
 const pick=a=>a[Math.floor(Math.random()*a.length)];
-const mezeFor=soup=>soup===YC?"Salata":(Math.random()<0.6?"Salata":"Cacık");
-const side=m=>{if(m.y===0)return null;let s=m.y||pick(sides);if(s==="Makarna"&&Math.random()<0.5)s="Soslu makarna";return s};
-const soupTxt=s=>s===YC?s:s+" çorbası";
+const wpick=(a,w)=>{const x=a.map(w);let r=Math.random()*x.reduce((p,q)=>p+q,0);
+  for(let i=0;i<a.length;i++){r-=x[i];if(r<=0)return a[i]}return a[a.length-1]};
+
+/* Geçmiş: günlük kayıt (localStorage), son 14 gün */
+const HK="bugunNeYiyelim.gecmis",today=()=>new Date().toLocaleDateString("sv");
+const loadH=()=>{try{return JSON.parse(localStorage.getItem(HK))||[]}catch(e){return[]}};
+const save=s=>{try{
+  const e=s.alone?{d:today(),alone:s.alone}:{d:today(),main:s.m.n,soup:s.soup,side:s.yanci,meze:s.meze};
+  localStorage.setItem(HK,JSON.stringify([...loadH().filter(x=>x.d!==e.d),e].slice(-14)));
+}catch(e){}};
+
+function pickMain(ex){
+  const H=loadH().filter(x=>x.main),rec=new Set(H.slice(-D.mainCooldown).map(x=>x.main)),last=H.length?byName[H[H.length-1].main]:null;
+  let p=MAINS.filter(m=>m.n!==ex&&!rec.has(m.n));
+  if(!p.length)p=MAINS.filter(m=>m.n!==ex);
+  return wpick(p,m=>last&&m.c===last.c?.5:1);
+}
+/* lock: sabit tutulan öğeler, avoid: değişmesi istenen mevcut öğeler.
+   Önce çakışmasız kombinasyonlar, sonra yakın zamanda kullanılmayanlar tercih edilir. */
+function compose(m,lock,avoid){
+  const so=lock.soup?[lock.soup]:cand(D.soupRules,D.soupDefaults,m);
+  const sd=!m.sides.length?[null]:lock.side?[lock.side]:m.choice?m.sides:[m.sides[0]];
+  const me=m.solo?[null]:lock.meze?[lock.meze]:cand(D.mezeRules,D.mezeDefaults,m);
+  const all=so.flatMap(a=>sd.flatMap(b=>me.map(c=>({soup:a,side:b,meze:c,c:clash(m,a,b,c)}))));
+  const min=Math.min(...all.map(x=>x.c)),ok=all.filter(x=>x.c===min);
+  const diff=ok.filter(x=>x.soup!==avoid.soup&&x.side!==avoid.side&&x.meze!==avoid.meze);
+  const best=diff.length?diff:ok;   /* değişmesi istenenler mümkünse farklı gelsin */
+  const R=loadH().slice(-D.softCooldown),w=(k,v)=>v&&R.some(x=>x[k]===v)?.15:1;
+  return wpick(best,x=>w("soup",x.soup)*w("side",x.side)*w("meze",x.meze));
+}
+const soupTxt=s=>s;
 let S=null,run=0,sel=new Set();
 
 function newState(){
-  if(Math.random()<0.2)return {alone:pick(alone)};
-  const m=pick(mains);
-  const soup=pick(soups.filter(s=>!(m.n==="Yeşil mercimek"&&s==="Mercimek")));
-  return {m,soup,yanci:side(m),meze:m.solo?null:mezeFor(soup)};
+  if(Math.random()<D.aloneChance){
+    const rec=loadH().slice(-2).map(x=>x.alone),pool=alone.filter(a=>!rec.includes(a));
+    return {alone:pick(pool.length?pool:alone)};
+  }
+  const m=pickMain(),r=compose(m,{},{});
+  return {m,soup:r.soup,yanci:r.side,meze:r.meze};
 }
 const sig=s=>s.alone||[s.m.n,s.soup,s.yanci,s.meze].join("|");
-function fresh(){let s,i=0;do{s=newState()}while(S&&sig(s)===sig(S)&&++i<20);return s}
+function fresh(){let s,i=0;do{s=newState()}while(S&&sig(s)===sig(S)&&++i<20);save(s);return s}
 
 function lines(s){
   const L=[{k:"title",t:"Bugünün Menüsü"}];
@@ -108,25 +247,24 @@ function lines(s){
 function parts(s){
   if(s.alone)return [{k:"alone",t:s.alone}];
   const p=[{k:"soup",t:soupTxt(s.soup)},{k:"main",t:s.m.n}];
-  if(s.yanci&&s.m.y===null)p.push({k:"yanci",t:s.yanci});
-  if(s.meze&&s.soup!==YC)p.push({k:"meze",t:s.meze});
+  if(s.yanci&&s.m.choice)p.push({k:"yanci",t:s.yanci});   /* zorunlu yan yemek değiştirilemez */
+  if(s.meze)p.push({k:"meze",t:s.meze});
   return p;
 }
 function change(s,sel){
-  if(s.alone)return {alone:pick(alone.filter(a=>a!==s.alone))};
-  const n={...s};
-  if(sel.has("main")){
-    const m=pick(mains.filter(x=>x.n!==s.m.n&&!(x.n==="Yeşil mercimek"&&n.soup==="Mercimek")));
-    n.m=m;n.yanci=(m.y===null&&s.m.y===null&&s.yanci)?s.yanci:side(m);
-    if(m.solo)n.meze=null;else if(!n.meze)n.meze=mezeFor(n.soup);
-  }
-  if(sel.has("meze")&&s.meze&&n.meze)n.meze=n.meze==="Salata"?"Cacık":"Salata";
-  if(sel.has("yanci")&&!sel.has("main")&&n.m.y===null){
-    const b=s.yanci==="Soslu makarna"?"Makarna":s.yanci;
-    n.yanci=side({y:pick(sides.filter(x=>x!==b))});
-  }
-  if(sel.has("soup"))n.soup=pick(soups.filter(x=>x!==s.soup&&!(n.m.n==="Yeşil mercimek"&&x==="Mercimek")&&!(n.meze==="Cacık"&&x===YC)));
-  return n;
+  if(s.alone){const n={alone:pick(alone.filter(a=>a!==s.alone))};save(n);return n}
+  const mc=sel.has("main"),m=mc?pickMain(s.m.n):s.m;
+  /* seçilmeyen çorba/meze yeni ana yemekle de uyumluysa korunur */
+  const keep=(k,list,cur)=>!sel.has(k)&&cur&&list.includes(cur)?cur:undefined;
+  const lock={soup:keep("soup",cand(D.soupRules,D.soupDefaults,m),s.soup),
+              meze:m.solo?undefined:keep("meze",cand(D.mezeRules,D.mezeDefaults,m),s.meze)};
+  if(!mc&&!sel.has("yanci")&&s.yanci)lock.side=s.yanci;
+  const av={soup:sel.has("soup")?s.soup:0,side:sel.has("yanci")&&!mc?s.yanci:0,meze:sel.has("meze")?s.meze:0};
+  let r=compose(m,lock,av);
+  const same=(sel.has("soup")&&r.soup===s.soup)||(sel.has("meze")&&r.meze===s.meze)||(av.side&&r.side===s.yanci);
+  if((r.c||same)&&(lock.soup||lock.meze||lock.side))r=compose(m,{},av);   /* kilitler çakışma yaratıyor veya değişime izin vermiyorsa serbest bırak */
+  const n={m,soup:r.soup,yanci:r.side,meze:r.meze};
+  save(n);return n;
 }
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const $=id=>document.getElementById(id);
